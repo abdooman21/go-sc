@@ -1,11 +1,20 @@
 package main
 
 import (
+	"log/slog"
 	"net/url"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
+
+type PageData struct {
+	URL            string
+	Heading        string
+	FirstParagraph string
+	OutgoingLinks  []string
+	ImageURLs      []string
+}
 
 func getHeadingFromHTML(html string) string {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
@@ -86,4 +95,27 @@ func getImagesFromHTML(htmlBody string, baseURL *url.URL) ([]string, error) {
 
 	})
 	return images, nil
+}
+
+func extractPageData(html, pageURL string) PageData {
+	pgdata := PageData{}
+	link, err := url.Parse(pageURL)
+	if err != nil {
+		slog.Error("parsing url failed ", "error", err)
+		return pgdata
+	}
+
+	pgdata.URL = pageURL
+	pgdata.Heading = getHeadingFromHTML(html)
+	pgdata.FirstParagraph = getFirstParagraphFromHTML(html)
+	pgdata.OutgoingLinks, err = getURLsFromHTML(html, link)
+	if err != nil {
+		slog.Error("fetching URls failed ", "error", err)
+	}
+	pgdata.ImageURLs, err = getImagesFromHTML(html, link)
+	if err != nil {
+		slog.Error("fetching images failed ", "error", err)
+	}
+	return pgdata
+
 }
