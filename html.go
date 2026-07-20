@@ -66,3 +66,24 @@ func getURLsFromHTML(htmlBody string, baseURL *url.URL) ([]string, error) {
 	})
 	return urls, nil
 }
+
+func getImagesFromHTML(htmlBody string, baseURL *url.URL) ([]string, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlBody))
+	if err != nil {
+		return nil, err
+	}
+	images := []string{}
+	doc.Find("img[src]").Each(func(_ int, selector *goquery.Selection) {
+		src, exsits := selector.Attr("src")
+		if exsits {
+			img, err := url.Parse(src)
+			if err != nil {
+				return
+			}
+			image := baseURL.ResolveReference(img)
+			images = append(images, image.String())
+		}
+
+	})
+	return images, nil
+}
