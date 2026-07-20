@@ -80,3 +80,24 @@ func TestGetURLsFromHTMLAbsolute(t *testing.T) {
 		t.Errorf("expected %v, got %v", expected, actual)
 	}
 }
+
+func TestGetImageFromHTMLAbsolute(t *testing.T) {
+	inputURL := "https://crawler-test.com"
+	inputBody := `<html><body><img src="photo.jpg" alt="A sleeping cat" width="300" height="200"></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := getImagesFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"https://crawler-test.com/photo.jpg"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
