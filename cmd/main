@@ -1,0 +1,131 @@
+package main
+
+import (
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/PuerkitoBio/goquery"
+)
+
+// ResearchData represents the extracted fields mapped to JSON keys.
+type ResearchData struct {
+	ID           int    `json:"id"`
+	TitleAR      string `json:"title_ar"`
+	TitleEN      string `json:"title_en"`
+	Researcher   string `json:"researcher"`
+	Specialty    string `json:"specialty"`
+	SubSpecialty string `json:"sub_specialty"`
+	AbstractAR   string `json:"abstract_ar"`
+	AbstractEN   string `json:"abstract_en"`
+	Status       string `json:"status"`
+	Arbitration  string `json:"arbitration"`
+	Publisher    string `json:"publisher"`
+	Year         string `json:"year"`
+}
+
+// ExtractResearchData parses the HTML stream directly from the HTTP response.
+func ExtractResearchData(body io.Reader, id int) (ResearchData, error) {
+	data := ResearchData{ID: id}
+	doc, err := goquery.NewDocumentFromReader(body)
+	if err != nil {
+		return data, err
+	}
+
+	data.TitleAR = strings.TrimSpace(doc.Find(".nds-details-title-ar").Text())
+	data.TitleEN = strings.TrimSpace(doc.Find(".nds-details-title-en").Text())
+	data.Researcher = strings.TrimSpace(doc.Find(".nds-details-meta strong").Text())
+
+	doc.Find(".nds-info-item").Each(func(i int, s *goquery.Selection) {
+		label := strings.TrimSpace(s.Find(".nds-info-label").Text())
+		value := strings.TrimSpace(s.Find(".nds-info-value").Text())
+
+		switch label {
+		case "التخصص":
+			data.Specialty = value
+		case "التخصص الدقيق":
+			data.SubSpecialty = value
+		case "المستخلص":
+			data.AbstractAR = cleanText(value)
+		case "Abstract":
+			data.AbstractEN = cleanText(value)
+		case "الحالة":
+			data.Status = value
+		case "جهة التحكيم":
+			data.Arbitration = value
+		case "دار النشر":
+			data.Publisher = value
+		case "سنة النشر":
+			data.Year = value
+		}
+	})
+
+	return data, nil
+}
+
+func cleanText(text string) string {
+	text = strings.ReplaceAll(text, "\n", " ")
+	text = strings.ReplaceAll(text, "\r", " ")
+	return strings.Join(strings.Fields(text), " ")
+}
+
+func main() {
+	// CLI Flags
+	baseURL := flag.String("url", "https://mysite/mypages/Details/", "The base URL before the ID")
+	startID := flag.Int("start", 122227, "The starting ID number")
+	iterations := flag.Int("n", 10, "Number of iterations/pages to check")
+	flag.Parse()
+
+	// Use a custom HTTP client with a timeout so broken servers don't hang the script
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	var results []ResearchData
+
+	for i := 0; i < *iterations; i++ {
+		currentID := *startID + i
+		// Format the URL. If you need leading zeros (e.g., 0001), change "%d" to "%04d"
+		targetURL := fmt.Sprintf("%s%d", *baseURL, currentID)
+
+		log.Printf("Fetching: %s", targetURL)
+
+		resp, err := client.Get(targetURL)
+		if err != nil {
+			log.Printf("Error fetching %s: %v", targetURL, err)
+			continue
+		}
+
+		// If the page doesn't exist, close body and skip to the next
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("Skipping %s (Status: %d)", targetURL, resp.StatusCode)
+			resp.Body.Close()
+			continue
+		}
+
+		// Process the page
+		data, err := ExtractResearchData(resp.Body, currentID)
+		resp.Body.Close() // Always close immediately after parsing
+
+		if err != nil {
+			log.Printf("Failed to parse HTML for %s: %v", targetURL, err)
+			continue
+		}
+
+		results = append(results, data)
+	}
+
+	// Output the final JSON
+	jsonData, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		log.Fatalf("Fatal error generating JSON: %v", err)
+	}
+
+	// Print to stdout. You can pipe this to a file when running the command.
+	fmt.Println(string(jsonData))
+}
