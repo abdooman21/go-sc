@@ -31,6 +31,8 @@ func getHeadingFromHTML(html string) string {
 	if h2.Length() > 0 {
 		return h2.Text()
 	}
+	// h1 := doc.Find("h1, h2").First().Text()
+	// return strings.TrimSpace(h1)
 
 	return ""
 }
