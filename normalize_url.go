@@ -12,6 +12,7 @@ func NormalizeURL(rawURL string) (string, error) {
 
 	path := strings.TrimSuffix(parts.Path, "/")
 	fullurl := parts.Host + path
+	fullurl = strings.ToLower(fullurl)
 
 	return fullurl, err
 }
