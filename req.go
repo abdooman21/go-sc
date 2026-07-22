@@ -37,6 +37,7 @@ func getHTML(rawURL string) (string, error) {
 	return string(html), nil
 }
 
+// TODO change to this crawlPage(base *url.URL, rawCurrentURL string, pages map[string]int) stop redundant baseURL parsing
 func crawlPage(rawBaseURL, rawCurrentURL string, pages map[string]int) {
 	curURL, err := url.Parse(rawCurrentURL)
 	if err != nil {
