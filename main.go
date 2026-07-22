@@ -17,9 +17,19 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	baseURL := args[1]
-	fmt.Printf("starting crawl of: \"%s\"\n", baseURL)
+	rawbaseURL := args[1]
+	fmt.Printf("starting crawl of: \"%s\"\n", rawbaseURL)
 	// 	inputURL: "https://www.boot.dev/blog/path",
 	// expected: "www.boot.dev/blog/path",
+	// resp, err := getHTML(baseURL)
+	// if err != nil {
+	// 	fmt.Printf("failed %s\n", err)
+	// 	os.Exit(1)
+	// }
+	// fmt.Print(resp)
+	pages := make(map[string]int)
+	baseURL, _ := NormalizeURL(rawbaseURL)
+	crawlPage(baseURL, rawbaseURL, pages)
+	fmt.Println(pages)
 
 }
