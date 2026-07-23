@@ -28,6 +28,21 @@ func main() {
 	// fmt.Print(resp)
 	pages := make(map[string]int)
 	crawlPage(baseURL, baseURL, pages)
-	fmt.Println(pages)
+	// fmt.Println(pages)
+	file, err := os.Create("results.txt")
+	if err != nil {
+		fmt.Printf("Failed to create file: %v\n", err)
+		os.Exit(1)
+	}
+	// Ensure the file is closed when the function exits
+	defer file.Close()
 
+	// 2. Iterate through the map and write to the file
+	for url, count := range pages {
+		_, err := fmt.Fprintf(file, "%s : %d\n", url, count)
+		if err != nil {
+			fmt.Printf("Failed to write to file: %v\n", err)
+			os.Exit(1)
+		}
+	}
 }
